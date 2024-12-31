@@ -366,6 +366,8 @@ class ResNet(nn.Module):
         x = self.upSample(x)
 
         x = self.conv3(x)
+        # Add ReLu
+        x = self.relu(x)
         x = self.bilinear(x)
 
         return x
