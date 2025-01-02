@@ -120,3 +120,5 @@ dmypy.json
 # JPG PNG
 *.jpg
 *.png
+
+result/upproj

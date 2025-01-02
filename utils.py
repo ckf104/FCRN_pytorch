@@ -40,6 +40,8 @@ def parse_command():
     parser.add_argument('--manual_seed', default=1, type=int, help='Manually set random seed')
     parser.add_argument('--print-freq', '-p', default=10, type=int,
                         metavar='N', help='print frequency (default: 10)')
+    parser.add_argument('--dataset-dir', required=True, type=str, help='path to dataset')
+    parser.add_argument('--upper-limit', default=1.0e6, type=float, help='upper limit of depth')
     args = parser.parse_args()
     return args
 

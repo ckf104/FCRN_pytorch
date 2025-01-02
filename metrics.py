@@ -15,12 +15,13 @@ def log10(x):
 
 
 class Result(object):
-    def __init__(self):
+    def __init__(self, args):
         self.irmse, self.imae = 0, 0
         self.mse, self.rmse, self.mae = 0, 0, 0
         self.absrel, self.lg10 = 0, 0
         self.delta1, self.delta2, self.delta3 = 0, 0, 0
         self.data_time, self.gpu_time = 0, 0
+        self.upper_limit = args.upper_limit
 
     def set_to_worst(self):
         self.irmse, self.imae = np.inf, np.inf
@@ -37,7 +38,7 @@ class Result(object):
         self.data_time, self.gpu_time = data_time, gpu_time
 
     def evaluate(self, output, target):
-        valid_mask = target > 0
+        valid_mask = (target > 0) & (target < self.upper_limit)
         output = output[valid_mask]
         target = target[valid_mask]
 
@@ -46,7 +47,8 @@ class Result(object):
         self.mse = float((torch.pow(abs_diff, 2)).mean())
         self.rmse = math.sqrt(self.mse)
         self.mae = float(abs_diff.mean())
-        self.lg10 = float((log10(output) - log10(target)).abs().mean())
+        lg10_mask = output > 0
+        self.lg10 = float((log10(output[lg10_mask]) - log10(target[lg10_mask])).abs().mean())
         self.absrel = float((abs_diff / target).mean())
 
         maxRatio = torch.max(output / target, target / output)
@@ -64,8 +66,9 @@ class Result(object):
 
 
 class AverageMeter(object):
-    def __init__(self):
+    def __init__(self, args):
         self.reset()
+        self.args = args
 
     def reset(self):
         self.count = 0.0
@@ -93,7 +96,7 @@ class AverageMeter(object):
         self.sum_gpu_time += n * gpu_time
 
     def average(self):
-        avg = Result()
+        avg = Result(self.args)
         avg.update(
             self.sum_irmse / self.count, self.sum_imae / self.count,
             self.sum_mse / self.count, self.sum_rmse / self.count, self.sum_mae / self.count,

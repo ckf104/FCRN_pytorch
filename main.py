@@ -13,8 +13,8 @@ import torch
 from tensorboardX import SummaryWriter
 from torch.optim import lr_scheduler
 
-from dataloaders import kitti_dataloader, nyu_dataloader
-from dataloaders.path import Path
+from dataloaders import kitti_dataloader, nyu_dataloader, make3d_dataloader
+from torchvision import transforms
 from metrics import AverageMeter, Result
 import utils
 import criteria
@@ -30,24 +30,28 @@ from network import FCRN
 args = utils.parse_command()
 print(args)
 
-best_result = Result()
+best_result = Result(args)
 best_result.set_to_worst()
 
 
 def create_loader(args):
-    traindir = os.path.join(Path.db_root_dir(args.dataset), 'train')
-    if os.path.exists(traindir):
-        print('Train dataset "{}" is existed!'.format(traindir))
-    else:
-        print('Train dataset "{}" is not existed!'.format(traindir))
+    dataset_dir = args.dataset_dir
+    if not os.path.exists(dataset_dir):
+        print('Dataset "{}" is not existed!'.format(dataset_dir))
         exit(-1)
+    traindir = os.path.join(dataset_dir, 'train')
+    # if os.path.exists(traindir):
+    #     print('Train dataset "{}" is existed!'.format(traindir))
+    # else:
+    #     print('Train dataset "{}" is not existed!'.format(traindir))
+    #     exit(-1)
 
-    valdir = os.path.join(Path.db_root_dir(args.dataset), 'val')
-    if os.path.exists(traindir):
-        print('Train dataset "{}" is existed!'.format(valdir))
-    else:
-        print('Train dataset "{}" is not existed!'.format(valdir))
-        exit(-1)
+    valdir = os.path.join(dataset_dir, 'val')
+    # if os.path.exists(traindir):
+    #     print('Train dataset "{}" is existed!'.format(valdir))
+    # else:
+    #     print('Train dataset "{}" is not existed!'.format(valdir))
+    #     exit(-1)
 
     if args.dataset == 'kitti':
         train_set = kitti_dataloader.KITTIDataset(traindir, type='train')
@@ -60,6 +64,9 @@ def create_loader(args):
     elif args.dataset == 'nyu':
         train_set = nyu_dataloader.NYUDataset(traindir, type='train')
         val_set = nyu_dataloader.NYUDataset(valdir, type='val')
+    elif args.dataset == 'make3d':
+        train_set = make3d_dataloader.Make3dDataset(dataset_dir, type='train')
+        val_set = make3d_dataloader.Make3dDataset(dataset_dir, type='val')
     else:
         print('no dataset named as ', args.dataset)
         exit(-1)
@@ -134,7 +141,7 @@ def main():
         optimizer, 'min', patience=args.lr_patience)
 
     # loss function
-    criterion = criteria.MaskedL1Loss()
+    criterion = criteria.MaskedL1Loss(args.upper_limit)
 
     # create directory path
     output_directory = utils.get_output_directory(args)
@@ -186,13 +193,14 @@ def main():
                 utils.save_image(img_merge, img_filename)
 
         # save checkpoint for each epoch
-        utils.save_checkpoint({
-            'args': args,
-            'epoch': epoch,
-            'model': model,
-            'best_result': best_result,
-            'optimizer': optimizer,
-        }, is_best, epoch, output_directory)
+        if is_best or epoch % 10 == 0:
+            utils.save_checkpoint({
+                'args': args,
+                'epoch': epoch,
+                'model': model,
+                'best_result': best_result,
+                'optimizer': optimizer,
+            }, is_best, epoch, output_directory)
 
         # when rml doesn't fall, reduce learning rate
         scheduler.step(result.absrel)
@@ -202,7 +210,7 @@ def main():
 
 # train
 def train(train_loader, model, criterion, optimizer, epoch, logger):
-    average_meter = AverageMeter()
+    average_meter = AverageMeter(args)
     model.train()  # switch to train mode
     end = time.time()
 
@@ -233,7 +241,7 @@ def train(train_loader, model, criterion, optimizer, epoch, logger):
         gpu_time = time.time() - end
 
         # measure accuracy and record loss
-        result = Result()
+        result = Result(args)
         result.evaluate(pred.data, target.data)
         average_meter.update(result, gpu_time, data_time, input.size(0))
         end = time.time()
@@ -265,7 +273,7 @@ def train(train_loader, model, criterion, optimizer, epoch, logger):
 
 # validation
 def validate(val_loader, model, epoch, logger):
-    average_meter = AverageMeter()
+    average_meter = AverageMeter(args)
 
     model.eval()  # switch to evaluate mode
 
@@ -288,7 +296,7 @@ def validate(val_loader, model, epoch, logger):
         gpu_time = time.time() - end
 
         # measure accuracy and record loss
-        result = Result()
+        result = Result(args)
         result.evaluate(pred.data, target.data)
 
         average_meter.update(result, gpu_time, data_time, input.size(0))
@@ -299,6 +307,8 @@ def validate(val_loader, model, epoch, logger):
             rgb = input[0]
             pred = pred[0]
             target = target[0]
+        elif args.dataset == 'make3d':
+            rgb = transforms.Resize((460, 345))(input[0])
         else:
             rgb = input
 

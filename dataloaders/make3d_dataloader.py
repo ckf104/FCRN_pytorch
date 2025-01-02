@@ -160,7 +160,7 @@ class Make3dDataset(data.Dataset):
         self.net_input_size = 460 // 2, 345 // 2
 
     def collect_images(self, root: str, mode: str):
-        assert mode in ["train", "test"]
+        assert mode in ["train", "val"]
 
         for f in os.listdir(root):
             complete_path = os.path.join(root, f)
@@ -170,7 +170,7 @@ class Make3dDataset(data.Dataset):
                 continue
             depth_map = os.path.join(root, f"{os.path.splitext(f)[0]}.dat")
             rgb_map = os.path.join(root, f)
-            if f in make_3d_test_images and mode == "test":
+            if f in make_3d_test_images and mode == "val":
                 self.imgs.append((rgb_map, depth_map))
             elif f not in make_3d_test_images and mode == "train":
                 self.imgs.append((rgb_map, depth_map))
@@ -239,7 +239,7 @@ if __name__ == "__main__":
 
     root = sys.argv[1]
     myDataset = Make3dDataset(root, "train")
-    myTestDataset = Make3dDataset(root, "test")
+    myTestDataset = Make3dDataset(root, "val")
 
     net = FCRN.ResNet(layers=50, output_size=myDataset.output_size).cuda()
     rgb, depth = myDataset[0]

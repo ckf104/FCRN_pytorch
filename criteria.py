@@ -22,12 +22,13 @@ class MaskedMSELoss(nn.Module):
 
 
 class MaskedL1Loss(nn.Module):
-    def __init__(self):
+    def __init__(self, upper_limit=1.0e6):
         super(MaskedL1Loss, self).__init__()
+        self.upper_limit = upper_limit
 
     def forward(self, pred, target):
         assert pred.dim() == target.dim(), "inconsistent dimensions"
-        valid_mask = (target > 0).detach()
+        valid_mask = ((target > 0) & (target < self.upper_limit)).detach()
         diff = target - pred
         diff = diff[valid_mask]
         self.loss = diff.abs().mean()
