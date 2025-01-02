@@ -42,6 +42,7 @@ def parse_command():
                         metavar='N', help='print frequency (default: 10)')
     parser.add_argument('--dataset-dir', required=True, type=str, help='path to dataset')
     parser.add_argument('--upper-limit', default=1.0e6, type=float, help='upper limit of depth')
+    parser.add_argument('--validate-only', action='store_true', help='Perform validation only')
     args = parser.parse_args()
     return args
 
@@ -77,10 +78,16 @@ def colored_depthmap(depth, d_min=None, d_max=None):
     return 255 * cmap(depth_relative)[:, :, :3]  # H, W, C
 
 
-def merge_into_row(input, depth_target, depth_pred):
+def merge_into_row(input, depth_target, depth_pred, args):
     rgb = 255 * np.transpose(np.squeeze(input.cpu().numpy()), (1, 2, 0))  # H, W, C
     depth_target_cpu = np.squeeze(depth_target.cpu().numpy())
     depth_pred_cpu = np.squeeze(depth_pred.data.cpu().numpy())
+
+    upper_limit_mask_cpu = depth_target_cpu > args.upper_limit
+    depth_target_cpu[upper_limit_mask_cpu] = 0.0
+    depth_pred_cpu[upper_limit_mask_cpu] = 0.0
+
+    depth_pred_cpu = np.clip(depth_pred_cpu, 0, args.upper_limit)
 
     d_min = min(np.min(depth_target_cpu), np.min(depth_pred_cpu))
     d_max = max(np.max(depth_target_cpu), np.max(depth_pred_cpu))

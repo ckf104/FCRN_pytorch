@@ -150,6 +150,10 @@ def main():
     best_txt = os.path.join(output_directory, 'best.txt')
     config_txt = os.path.join(output_directory, 'config.txt')
 
+    if args.validate_only:
+        validate(val_loader, model, start_epoch - 1)
+        return
+
     # write training parameters to config file
     if not os.path.exists(config_txt):
         with open(config_txt, 'w') as txtfile:
@@ -272,7 +276,7 @@ def train(train_loader, model, criterion, optimizer, epoch, logger):
 
 
 # validation
-def validate(val_loader, model, epoch, logger):
+def validate(val_loader, model, epoch, logger=None):
     average_meter = AverageMeter(args)
 
     model.eval()  # switch to evaluate mode
@@ -313,9 +317,9 @@ def validate(val_loader, model, epoch, logger):
             rgb = input
 
         if i == 0:
-            img_merge = utils.merge_into_row(rgb, target, pred)
+            img_merge = utils.merge_into_row(rgb, target, pred, args)
         elif (i < 8 * skip) and (i % skip == 0):
-            row = utils.merge_into_row(rgb, target, pred)
+            row = utils.merge_into_row(rgb, target, pred, args)
             img_merge = utils.add_row(img_merge, row)
         elif i == 8 * skip:
             filename = output_directory + '/comparison_' + str(epoch) + '.png'
@@ -344,12 +348,13 @@ def validate(val_loader, model, epoch, logger):
           't_GPU={time:.3f}\n'.format(
         average=avg, time=avg.gpu_time))
 
-    logger.add_scalar('Test/rmse', avg.rmse, epoch)
-    logger.add_scalar('Test/Rel', avg.absrel, epoch)
-    logger.add_scalar('Test/log10', avg.lg10, epoch)
-    logger.add_scalar('Test/Delta1', avg.delta1, epoch)
-    logger.add_scalar('Test/Delta2', avg.delta2, epoch)
-    logger.add_scalar('Test/Delta3', avg.delta3, epoch)
+    if logger:
+        logger.add_scalar('Test/rmse', avg.rmse, epoch)
+        logger.add_scalar('Test/Rel', avg.absrel, epoch)
+        logger.add_scalar('Test/log10', avg.lg10, epoch)
+        logger.add_scalar('Test/Delta1', avg.delta1, epoch)
+        logger.add_scalar('Test/Delta2', avg.delta2, epoch)
+        logger.add_scalar('Test/Delta3', avg.delta3, epoch)
     return avg, img_merge
 
 
