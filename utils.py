@@ -43,6 +43,7 @@ def parse_command():
     parser.add_argument('--dataset-dir', required=True, type=str, help='path to dataset')
     parser.add_argument('--upper-limit', default=1.0e6, type=float, help='upper limit of depth')
     parser.add_argument('--validate-only', action='store_true', help='Perform validation only')
+    parser.add_argument('--loss-func', default='l1', type=str, help='loss function', choices=['l1', 'berhu'])
     args = parser.parse_args()
     return args
 

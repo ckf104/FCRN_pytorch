@@ -141,7 +141,10 @@ def main():
         optimizer, 'min', patience=args.lr_patience)
 
     # loss function
-    criterion = criteria.MaskedL1Loss(args.upper_limit)
+    if args.loss_funcl == 'l1':
+        criterion = criteria.MaskedL1Loss(args.upper_limit)
+    else:
+        criterion = criteria.berHuLoss(args.upper_limit)
 
     # create directory path
     output_directory = utils.get_output_directory(args)
