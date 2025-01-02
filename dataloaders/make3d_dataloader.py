@@ -122,6 +122,7 @@ class Make3dDataset(data.Dataset):
     # w: 1704, h: 2272
     file_suffix = ".jpg"
     total_number = 425
+    random_seed = 121
 
     @staticmethod
     def shuffle_data(root_path: str):
@@ -150,8 +151,7 @@ class Make3dDataset(data.Dataset):
         print(test_imgs)
 
     def __init__(self, root, type, sparsifier=None, modality="rgb"):
-
-        torch.manual_seed(121)
+        torch.manual_seed(Make3dDataset.random_seed)
         self.imgs = []
         self.collect_images(root, type)
         self.mode = type
@@ -192,7 +192,6 @@ class Make3dDataset(data.Dataset):
         rgb = transforms.functional.crop(rgb, *crop_params)
         rgb = transforms.functional.hflip(rgb) if do_flip else rgb
         rgb = transforms.ColorJitter(0.2, 0.2, 0.2)(rgb)
-        rgb = rgb.to(torch.float32) / 255
 
         # perform depth transformation
         depth_np = depth / scale
@@ -201,8 +200,6 @@ class Make3dDataset(data.Dataset):
         depth_np = transforms.Resize(scaled_size)(depth_np)
         depth_np = transforms.functional.crop(depth_np, *crop_params)
         depth_np = transforms.functional.hflip(depth_np) if do_flip else depth_np
-
-        depth_np = transforms.Resize(self.output_size)(depth_np)
 
         return rgb, depth_np
 
@@ -213,17 +210,24 @@ class Make3dDataset(data.Dataset):
         depth = transforms.Resize(self.output_size)(depth)
 
         return rgb, depth
-
-    def __getitem__(self, index):
-        rgb_path, depth_path = self.imgs[index]
+    
+    def __getraw__(self, rgb_path, depth_path):
         rgb = Image.open(rgb_path).convert("RGB")
         rgb = transforms.functional.pil_to_tensor(rgb)
         depth = np.loadtxt(depth_path, dtype=np.float32)
         depth = torch.tensor(depth)
         depth = depth.unsqueeze(0)
 
+        return rgb, depth
+
+    def __getitem__(self, index):
+        rgb_path, depth_path = self.imgs[index]
+        rgb, depth = self.__getraw__(rgb_path, depth_path)
+
         if self.mode == "train":
             rgb, depth = self.train_transform(rgb, depth)
+            rgb = rgb.to(torch.float32) / 255
+            depth = transforms.Resize(self.output_size)(depth)
         else:
             rgb, depth = self.val_transform(rgb, depth)
         return rgb, depth
@@ -231,6 +235,76 @@ class Make3dDataset(data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
+
+# Unlike Make3dDataset, Make3dDatasetV2 uses a fixed training dataset in the dataset,
+# Default repeat numebr 50 will generate 15k images for training, keeping the same as the
+# original paper.
+class Make3dDatasetV2(Make3dDataset):
+
+    def __init__(self, root, type, sparsifier=None, modality="rgb", repeat=50):
+        self.repeat = repeat
+        self.root = root
+        super().__init__(root, type, sparsifier, modality)
+
+
+    def generate_train_data(self):
+        root_path = self.root
+        train_path = os.path.join(root_path, "train")
+        if os.path.exists(train_path):
+            print(f"{train_path} already exists")
+            return
+        os.makedirs(train_path)
+        for f in os.listdir(root_path):
+            rgb_path = os.path.join(root_path, f)
+            if os.path.isdir(rgb_path):
+                continue
+            if not f.endswith(Make3dDataset.file_suffix):
+                continue    
+            if f in make_3d_test_images:
+                continue
+            depth_path = os.path.join(root_path, f"{os.path.splitext(f)[0]}.dat")
+            assert os.path.exists(depth_path), f"{depth_path} does not exist"
+
+            rgb, depth = self.__getraw__(rgb_path, depth_path)
+
+            for i in range(self.repeat):
+                rgb_i, depth_i = self.train_transform(rgb, depth)
+                depth_i = depth_i.squeeze(0)
+                pil_image = transforms.functional.to_pil_image(rgb_i)
+                pil_image.save(os.path.join(train_path, f"{os.path.splitext(f)[0]}_{i}{Make3dDataset.file_suffix}"))
+                np.savetxt(os.path.join(train_path, f"{os.path.splitext(f)[0]}_{i}.dat"), depth_i.numpy())
+    
+    def collect_images(self, root, mode):
+        if mode == "val":
+            return super().collect_images(root, mode)
+        
+        train_path = os.path.join(root, "train")
+        if not os.path.exists(train_path):
+            self.generate_train_data()
+
+        for f in os.listdir(train_path):
+            complete_path = os.path.join(train_path, f)
+            if os.path.isdir(complete_path):
+                continue
+            if not f.endswith(Make3dDataset.file_suffix):
+                continue
+            depth_map = os.path.join(train_path, f"{os.path.splitext(f)[0]}.dat")
+            rgb_map = os.path.join(train_path, f)
+            self.imgs.append((rgb_map, depth_map))
+        
+        assert len(self.imgs) == (Make3dDataset.total_number - len(make_3d_test_images)) * self.repeat, "The number of images is not correct"
+    
+    def __getitem__(self, index):
+        if self.mode == "val":
+            return super().__getitem__(index)
+        rgb_path, depth_path = self.imgs[index]
+        rgb, depth = self.__getraw__(rgb_path, depth_path)
+
+        rgb = rgb.to(torch.float32) / 255
+        depth = transforms.Resize(self.output_size)(depth)
+
+        return rgb, depth
 
 
 if __name__ == "__main__":

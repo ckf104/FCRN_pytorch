@@ -65,8 +65,8 @@ def create_loader(args):
         train_set = nyu_dataloader.NYUDataset(traindir, type='train')
         val_set = nyu_dataloader.NYUDataset(valdir, type='val')
     elif args.dataset == 'make3d':
-        train_set = make3d_dataloader.Make3dDataset(dataset_dir, type='train')
-        val_set = make3d_dataloader.Make3dDataset(dataset_dir, type='val')
+        train_set = make3d_dataloader.Make3dDatasetV2(dataset_dir, type='train')
+        val_set = make3d_dataloader.Make3dDatasetV2(dataset_dir, type='val')
     else:
         print('no dataset named as ', args.dataset)
         exit(-1)
