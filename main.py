@@ -54,13 +54,8 @@ def create_loader(args):
     #     exit(-1)
 
     if args.dataset == 'kitti':
-        train_set = kitti_dataloader.KITTIDataset(traindir, type='train')
-        val_set = kitti_dataloader.KITTIDataset(valdir, type='val')
-
-        # sample 3200 pictures for validation from val set
-        weights = [1 for i in range(len(val_set))]
-        print('weights:', len(weights))
-        sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=3200)
+        train_set = kitti_dataloader.MyKITTIDataset(dataset_dir, type='train')
+        val_set = kitti_dataloader.MyKITTIDataset(dataset_dir, type='val')
     elif args.dataset == 'nyu':
         train_set = nyu_dataloader.NYUDataset(traindir, type='train')
         val_set = nyu_dataloader.NYUDataset(valdir, type='val')
@@ -76,7 +71,7 @@ def create_loader(args):
 
     if args.dataset == 'kitti':
         val_loader = torch.utils.data.DataLoader(
-            val_set, batch_size=args.batch_size, sampler=sampler, num_workers=args.workers, pin_memory=True)
+            val_set, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True)
     else:
         val_loader = torch.utils.data.DataLoader(
             val_set, batch_size=1, shuffle=False, num_workers=args.workers, pin_memory=True)
@@ -129,7 +124,7 @@ def main():
 
         # different modules have different learning rate
         train_params = [{'params': model.get_1x_lr_params(), 'lr': args.lr},
-                        {'params': model.get_10x_lr_params(), 'lr': args.lr * 10}]
+                        {'params': model.get_10x_lr_params(), 'lr': args.lr if args.average_lr else args.lr * 10}]
 
         optimizer = torch.optim.SGD(train_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
@@ -141,7 +136,7 @@ def main():
         optimizer, 'min', patience=args.lr_patience)
 
     # loss function
-    if args.loss_funcl == 'l1':
+    if args.loss_func == 'l1':
         criterion = criteria.MaskedL1Loss(args.upper_limit)
     else:
         criterion = criteria.berHuLoss(args.upper_limit)

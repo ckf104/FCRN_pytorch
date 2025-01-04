@@ -44,6 +44,7 @@ def parse_command():
     parser.add_argument('--upper-limit', default=1.0e6, type=float, help='upper limit of depth')
     parser.add_argument('--validate-only', action='store_true', help='Perform validation only')
     parser.add_argument('--loss-func', default='l1', type=str, help='loss function', choices=['l1', 'berhu'])
+    parser.add_argument('--average-lr', action='store_true', help='use a unified learning rate for all layers')
     args = parser.parse_args()
     return args
 
@@ -54,7 +55,7 @@ def get_output_directory(args):
     else:
         save_dir_root = os.path.join(os.path.dirname(os.path.abspath(__file__)))
         save_dir_root = os.path.join(save_dir_root, 'result', args.decoder)
-        runs = sorted(glob.glob(os.path.join(save_dir_root, 'run_*')))
+        runs = sorted(glob.glob(os.path.join(save_dir_root, 'run_*')), key=lambda x: int(x.split('_')[-1]))
         run_id = int(runs[-1].split('_')[-1]) + 1 if runs else 0
 
         save_dir = os.path.join(save_dir_root, 'run_' + str(run_id))
