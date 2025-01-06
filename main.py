@@ -138,6 +138,8 @@ def main():
     # loss function
     if args.loss_func == 'l1':
         criterion = criteria.MaskedL1Loss(args.upper_limit)
+    elif args.loss_func == 'ssim':
+        criterion = criteria.SSIMLoss(args.upper_limit)
     else:
         criterion = criteria.berHuLoss(args.upper_limit)
 
