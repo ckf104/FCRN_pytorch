@@ -118,7 +118,8 @@ def main():
         torch.cuda.empty_cache()
     else:
         print("=> creating Model")
-        model = FCRN.ResNet(output_size=train_loader.dataset.output_size)
+        # model = FCRN.ResNet(output_size=train_loader.dataset.output_size)
+        model = FCRN.DenseNet(output_size=train_loader.dataset.output_size)
         print("=> model created.")
         start_epoch = 0
 
