@@ -311,17 +311,19 @@ if __name__ == "__main__":
     from network import FCRN
     import sys
 
-    root = sys.argv[1]
-    myDataset = Make3dDataset(root, "train")
-    myTestDataset = Make3dDataset(root, "val")
+    Make3dDatasetV2(root=sys.argv[1], type="train").generate_train_data()
 
-    net = FCRN.ResNet(layers=50, output_size=myDataset.output_size).cuda()
-    rgb, depth = myDataset[0]
-    rgb_cuda = rgb.unsqueeze(0).cuda()
-    predict = net(rgb_cuda)
-    print(predict.shape)
+    # root = sys.argv[1]
+    # myDataset = Make3dDataset(root, "train")
+    # myTestDataset = Make3dDataset(root, "val")
 
-    rgb, depth = myTestDataset[0]
-    rgb_cuda = rgb.unsqueeze(0).cuda()
-    predict = net(rgb_cuda)
-    print(predict.shape)
+    # net = FCRN.ResNet(layers=50, output_size=myDataset.output_size).cuda()
+    # rgb, depth = myDataset[0]
+    # rgb_cuda = rgb.unsqueeze(0).cuda()
+    # predict = net(rgb_cuda)
+    # print(predict.shape)
+
+    # rgb, depth = myTestDataset[0]
+    # rgb_cuda = rgb.unsqueeze(0).cuda()
+    # predict = net(rgb_cuda)
+    # print(predict.shape)
