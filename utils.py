@@ -43,8 +43,9 @@ def parse_command():
     parser.add_argument('--dataset-dir', required=True, type=str, help='path to dataset')
     parser.add_argument('--upper-limit', default=1.0e6, type=float, help='upper limit of depth')
     parser.add_argument('--validate-only', action='store_true', help='Perform validation only')
-    parser.add_argument('--loss-func', default='l1', type=str, help='loss function', choices=['l1', 'berhu'])
+    parser.add_argument('--loss-func', default='l1', type=str, help='loss function', choices=['l1', 'berhu', 'ssim'])
     parser.add_argument('--average-lr', action='store_true', help='use a unified learning rate for all layers')
+    parser.add_argument('--model', default='resnet', type=str, help='choose model', choices=['resnet', 'densenet'])
     args = parser.parse_args()
     return args
 

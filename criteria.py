@@ -64,15 +64,16 @@ class berHuLoss(nn.Module):
 
 
 class SSIMLoss(nn.Module):
-    def __init__(self, window_size=11, size_average=True):
+    def __init__(self, upper_limit, window_size=11, size_average=True):
         super(SSIMLoss, self).__init__()
         self.window_size = window_size
         self.size_average = size_average
         self.channel = 1
         self.window = self.create_window(window_size, self.channel)
+        self.upper_limit = upper_limit
 
     def gaussian_window(self, window_size, sigma):
-        gauss = torch.Tensor([torch.exp(-(x - window_size//2)**2/float(2*sigma**2)) for x in range(window_size)])
+        gauss = torch.Tensor([torch.exp(torch.tensor(-(x - window_size//2)**2/float(2*sigma**2))) for x in range(window_size)])
         return gauss/gauss.sum()
 
     def create_window(self, window_size, channel):
@@ -104,6 +105,10 @@ class SSIMLoss(nn.Module):
             return ssim_map.mean(1).mean(1).mean(1)
 
     def forward(self, img1, img2):
+        img2 = torch.clamp(img2, 0.0, self.upper_limit)
+        invalid_mask = (img2 <= 0).detach()
+        img1[invalid_mask] = 0.0
+
         (_, channel, _, _) = img1.size()
 
         if channel == self.channel and self.window.data.type() == img1.data.type():
