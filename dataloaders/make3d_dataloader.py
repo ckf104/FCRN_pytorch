@@ -281,7 +281,7 @@ class Make3dDatasetV2(Make3dDataset):
         
         train_path = os.path.join(root, "train")
         if not os.path.exists(train_path):
-            self.generate_train_data()
+            return super().collect_images(root, mode)
 
         for f in os.listdir(train_path):
             complete_path = os.path.join(train_path, f)
